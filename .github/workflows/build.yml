@@ -39,20 +39,48 @@ jobs:
       - name: Construire
         shell: bash
         run: |
+          # Le certificat Apple ne sert qu'au build macOS (sinon electron-builder l'utiliserait aussi
+          # pour signer l'installateur Windows). Windows utilisera WIN_CSC_LINK s'il est fourni un jour.
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            export CSC_LINK="$MAC_CSC_LINK" CSC_KEY_PASSWORD="$MAC_CSC_KEY_PASSWORD"
+          else
+            unset APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+          fi
+          unset MAC_CSC_LINK MAC_CSC_KEY_PASSWORD
           # Un secret absent arrive comme une chaîne vide, qu'electron-builder prendrait pour un
-          # chemin de certificat (« not a file ») : on retire ces variables vides avant le build.
-          for v in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
-            if [ -z "${!v}" ]; then unset "$v"; fi
+          # chemin de certificat (« not a file ») : on retire ces variables vides.
+          for v in CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!v:-}" ]; then unset "$v"; fi
           done
-          if [ -z "${CSC_LINK:-}" ]; then export CSC_IDENTITY_AUTO_DISCOVERY=false; fi
-          npx electron-builder ${{ matrix.target }} --publish never
+          if [ -z "${CSC_LINK:-}${WIN_CSC_LINK:-}" ]; then export CSC_IDENTITY_AUTO_DISCOVERY=false; fi
+
+          set +e
+          npx electron-builder ${{ matrix.target }} --publish never 2>&1 | tee build.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            # Les journaux ne sont lisibles qu'une fois connecté à GitHub ; les annotations sont publiques.
+            msg=$(grep -E '⨯|[Ee]rror|failed|denied|invalid' build.log | tail -8 | tr '\n' ' ' | cut -c1-1500)
+            echo "::error title=electron-builder::${msg:-échec sans message explicite}"
+            exit "$status"
+          fi
         env:
-          # Signature macOS / Windows : renseigner ces secrets pour signer (facultatif).
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          MAC_CSC_LINK: ${{ secrets.CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Vérifier la signature macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          app="$(ls -d dist/mac-arm64/*.app | head -1)"
+          sig=$(codesign -dv --verbose=2 "$app" 2>&1 | grep -E '^(Authority=Developer ID Application|TeamIdentifier|Runtime Version)' | tr '\n' ' ' || true)
+          gatekeeper=$(spctl --assess --type execute -vv "$app" 2>&1 | tr '\n' ' ' || true)
+          echo "::notice title=Signature macOS::${sig:-application non signée} | Gatekeeper : ${gatekeeper}"
 
       - uses: actions/upload-artifact@v7
         with:
