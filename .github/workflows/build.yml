@@ -27,9 +27,9 @@ jobs:
             target: --linux
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -37,7 +37,15 @@ jobs:
       - run: npm ci
 
       - name: Construire
-        run: npx electron-builder ${{ matrix.target }} --publish never
+        shell: bash
+        run: |
+          # Un secret absent arrive comme une chaîne vide, qu'electron-builder prendrait pour un
+          # chemin de certificat (« not a file ») : on retire ces variables vides avant le build.
+          for v in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!v}" ]; then unset "$v"; fi
+          done
+          if [ -z "${CSC_LINK:-}" ]; then export CSC_IDENTITY_AUTO_DISCOVERY=false; fi
+          npx electron-builder ${{ matrix.target }} --publish never
         env:
           # Signature macOS / Windows : renseigner ces secrets pour signer (facultatif).
           CSC_LINK: ${{ secrets.CSC_LINK }}
@@ -45,9 +53,8 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.CSC_LINK != '' }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: launcher-${{ runner.os }}
           path: |
@@ -62,7 +69,7 @@ jobs:
 
       - name: Joindre à la release
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           draft: true
           files: |
