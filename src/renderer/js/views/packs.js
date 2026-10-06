@@ -1,4 +1,4 @@
-import { call, on } from '../api.js';
+import { call, on, store } from '../api.js';
 import { clear, emptyState, formatBytes, formatDate, h, icon, loading, toast } from '../ui.js';
 
 export function renderPacks(root) {
@@ -48,6 +48,18 @@ export function renderPacks(root) {
       );
     const grid = h('div.packs');
     for (const p of packs) grid.append(packCard(p));
+    // Le jeu réécrit ses options en quittant : on ne touche aux packs que jeu fermé.
+    if (store.game.state !== 'idle') {
+      for (const el of grid.querySelectorAll('button, input')) el.disabled = true;
+      list.append(
+        h(
+          'div.announcement',
+          { style: { marginTop: 0, marginBottom: '16px' } },
+          icon('info'),
+          h('p', 'Ferme le jeu pour installer ou activer des packs de textures.'),
+        ),
+      );
+    }
     list.append(grid);
   }
 
@@ -119,5 +131,16 @@ export function renderPacks(root) {
   }
 
   load();
-  return offProgress;
+  let wasIdle = store.game.state === 'idle';
+  const offStore = store.subscribe((patch) => {
+    const idle = store.game.state === 'idle';
+    if ('game' in patch && idle !== wasIdle) {
+      wasIdle = idle;
+      load();
+    }
+  });
+  return () => {
+    offProgress();
+    offStore();
+  };
 }

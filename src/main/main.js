@@ -219,6 +219,14 @@ game.on('state', (s) => {
 
 // --- API exposée à l'interface -------------------------------------------------
 
+/**
+ * Le jeu réécrit options.txt avec ses propres valeurs et verrouille les zips sous Windows :
+ * les packs de textures ne se modifient que jeu fermé.
+ */
+function ensureGameClosed() {
+  if (game.state !== 'idle') throw new Error('Ferme le jeu avant de modifier les packs de textures.');
+}
+
 const imagesRoot = () => (config.images.listingUrl.endsWith('/') ? config.images.listingUrl : `${config.images.listingUrl}/`);
 
 const api = {
@@ -262,15 +270,23 @@ const api = {
   'game:logs': () => game.logs,
 
   'packs:list': () => listResourcePacks({ listingUrl: config.resourcePacks.listingUrl, gameDir: dirs.game }),
-  'packs:install': (name) =>
-    installResourcePack({
+  'packs:install': (name) => {
+    ensureGameClosed();
+    return installResourcePack({
       listingUrl: config.resourcePacks.listingUrl,
       gameDir: dirs.game,
       name,
       onProgress: (p) => send('pack-progress', p),
-    }),
-  'packs:remove': (name) => removeResourcePack({ gameDir: dirs.game, name }),
-  'packs:toggle': (name, enabled) => toggleResourcePack({ gameDir: dirs.game, name, enabled }),
+    });
+  },
+  'packs:remove': (name) => {
+    ensureGameClosed();
+    return removeResourcePack({ gameDir: dirs.game, name });
+  },
+  'packs:toggle': (name, enabled) => {
+    ensureGameClosed();
+    return toggleResourcePack({ gameDir: dirs.game, name, enabled });
+  },
 
   'images:list': async (sub = '') => {
     const root = imagesRoot();

@@ -60,6 +60,7 @@ function normalizePack(file) {
   out.writeZip(file);
 }
 
+/** Icône et description du pack (lecture du zip complet : résultat mis en cache dans le registre). */
 function readPackMeta(file) {
   try {
     const zip = new AdmZip(file);
@@ -84,7 +85,8 @@ export async function listResourcePacks({ listingUrl, gameDir }) {
   const remote = (await listDirectory(listingUrl)).filter((e) => !e.isDir && e.name.toLowerCase().endsWith('.zip'));
   const enabled = new Set(await getEnabledResourcePacks(gameDir));
   const records = await readRecords(dir);
-  return Promise.all(
+  const metaUpdates = {};
+  const packs = await Promise.all(
     remote.map(async (r) => {
       const file = path.join(dir, r.name);
       const st = await fs.stat(file).catch(() => null);
@@ -92,7 +94,16 @@ export async function listResourcePacks({ listingUrl, gameDir }) {
       const rec = records[r.name];
       // Le zip local peut avoir été réorganisé : on compare avec ce qui avait été téléchargé.
       const updateAvailable =
-        installed && (rec ? rec.size !== r.size || rec.modified !== r.modified : r.size != null && st.size !== r.size);
+        installed && (rec?.size != null ? rec.size !== r.size || rec.modified !== r.modified : r.size != null && st.size !== r.size);
+      let meta = { icon: null, description: '' };
+      if (installed) {
+        const fresh = rec?.local?.size === st.size && rec.local.mtimeMs === st.mtimeMs;
+        if (fresh) meta = { icon: rec.icon ?? null, description: rec.description ?? '' };
+        else {
+          meta = readPackMeta(file);
+          metaUpdates[r.name] = { local: { size: st.size, mtimeMs: st.mtimeMs }, ...meta };
+        }
+      }
       return {
         name: r.name,
         title: r.name.replace(/\.zip$/i, '').replace(/_/g, ' '),
@@ -101,10 +112,18 @@ export async function listResourcePacks({ listingUrl, gameDir }) {
         installed,
         updateAvailable,
         enabled: enabled.has(`file/${r.name}`),
-        ...(installed ? readPackMeta(file) : { icon: null, description: '' }),
+        ...meta,
       };
     }),
   );
+  if (Object.keys(metaUpdates).length) {
+    await exclusive(async () => {
+      const current = await readRecords(dir);
+      for (const [name, upd] of Object.entries(metaUpdates)) current[name] = { ...current[name], ...upd };
+      await writeRecords(dir, current);
+    });
+  }
+  return packs;
 }
 
 export async function installResourcePack({ listingUrl, gameDir, name, enable = true, onProgress }) {
@@ -131,9 +150,11 @@ export async function installResourcePack({ listingUrl, gameDir, name, enable = 
   } finally {
     await fs.rm(tmp, { force: true });
   }
+  const st = await fs.stat(dest);
+  const meta = readPackMeta(dest);
   await exclusive(async () => {
     const records = await readRecords(dir);
-    records[name] = { size: remote.size, modified: remote.modified };
+    records[name] = { size: remote.size, modified: remote.modified, local: { size: st.size, mtimeMs: st.mtimeMs }, ...meta };
     await writeRecords(dir, records);
     if (enable) await setResourcePackEnabled(gameDir, name, true);
   });

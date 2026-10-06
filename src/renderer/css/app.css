@@ -1208,6 +1208,10 @@ table.mods td.v {
 .switch input:checked + i::after {
   transform: translateX(16px);
 }
+.switch:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
 
 /* --- Images ----------------------------------------------------------------- */
 .crumbs {
