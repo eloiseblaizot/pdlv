@@ -341,11 +341,11 @@ ipcMain.handle('pdlv', async (event, method, ...args) => {
 // --- Cycle de vie -------------------------------------------------------------
 
 app.on('second-instance', () => {
-  if (win) {
-    if (win.isMinimized()) win.restore();
-    win.show();
-    win.focus();
-  }
+  // Fenêtre fermée pendant une partie : on la recrée.
+  if (!win) return createWindow();
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
 });
 
 app.whenReady().then(async () => {

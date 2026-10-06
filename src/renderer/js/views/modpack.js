@@ -38,7 +38,7 @@ export function renderModpack(root, { params }) {
             await call('modpack:update');
             toast('Modpack à jour !', 'ok');
           } catch (e) {
-            if (!/annulée/i.test(e.message)) toast(e.message, 'error', 8000);
+            if (!e.cancelled) toast(e.message, 'error', 8000);
           } finally {
             refreshModpack();
           }

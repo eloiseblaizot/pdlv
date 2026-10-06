@@ -144,7 +144,7 @@ export function renderSettings(root) {
                 await call('game:repair');
                 toast('Installation vérifiée et réparée.', 'ok');
               } catch (err) {
-                toast(err.message, 'error', 8000);
+                if (!err.cancelled) toast(err.message, 'error', 8000);
               } finally {
                 e.target.disabled = false;
                 refreshModpack();

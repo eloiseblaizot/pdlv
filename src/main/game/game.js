@@ -91,8 +91,17 @@ export class GameManager extends EventEmitter {
     this.busy = true;
     this.abort = new AbortController();
     this.emitState();
+    const signal = this.abort.signal;
     try {
-      return await fn(this.abort.signal);
+      return await fn(signal);
+    } catch (e) {
+      // Quelle que soit l'étape interrompue (téléchargement, Java…), l'interface reçoit la même erreur.
+      if (signal.aborted) {
+        const err = new Error('Opération annulée');
+        err.cancelled = true;
+        throw err;
+      }
+      throw e;
     } finally {
       this.busy = false;
       this.abort = null;
@@ -202,6 +211,7 @@ export class GameManager extends EventEmitter {
 
     this.logs = [];
     const startedAt = Date.now();
+    let started;
     const child = await launch({
       gamePath: this.dirs.game,
       javaPath,
@@ -219,13 +229,27 @@ export class GameManager extends EventEmitter {
       extraJVMArgs: [...DEFAULT_JVM_FLAGS, ...userJvm],
       extraExecOption: { windowsHide: false },
       // Remplace les variables que @xmcl/core ne connaît pas (identifiants Xbox).
-      spawn: (cmd, args, opts) =>
-        spawn(
+      spawn: (cmd, args, opts) => {
+        const proc = spawn(
           cmd,
           args.map((a) => placeholders[a] ?? a),
           opts,
-        ),
+        );
+        // Écouté immédiatement : 'spawn' / 'error' sont émis avant le retour de launch().
+        started = new Promise((resolve, reject) => {
+          proc.once('spawn', resolve);
+          proc.once('error', reject);
+        });
+        return proc;
+      },
     });
+    try {
+      await started;
+    } catch (e) {
+      throw new Error(
+        `Impossible de démarrer Java (${e.code ?? e.message}). Un antivirus l'a peut-être bloqué ; essaie « Réparer l'installation ».`,
+      );
+    }
     return { child, startedAt };
   }
 
@@ -235,7 +259,8 @@ export class GameManager extends EventEmitter {
     child.stdout?.on('data', (d) => this.pushLog(d.toString()));
     child.stderr?.on('data', (d) => this.pushLog(d.toString()));
     child.on('error', (e) => this.pushLog(`[launcher] ${e.message}`));
-    child.on('exit', async (code, sig) => {
+    // 'close' (et non 'exit') : les dernières lignes du journal sont alors bien reçues.
+    child.on('close', async (code, sig) => {
       this.child = null;
       const crashed = !this.killedByUser && code !== 0;
       this.killedByUser = false;

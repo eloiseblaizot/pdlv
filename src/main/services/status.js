@@ -100,6 +100,8 @@ export async function ping(host, port = 25565, timeout = 5000) {
     socket.on('close', () => {
       // Certains serveurs ferment sans répondre au ping : on garde le statut.
       if (status) resolve({ ...status, latency: null });
+      // Un proxy peut accepter la connexion puis la fermer quand le serveur est éteint.
+      else reject(new Error('Connexion fermée sans réponse'));
     });
   });
 }

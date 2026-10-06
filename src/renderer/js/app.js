@@ -169,7 +169,7 @@ async function onPlay() {
       store.set({ account: null });
       return showLogin(e.message);
     }
-    if (!/annulée/i.test(e.message)) {
+    if (!e.cancelled) {
       modal({
         title: 'Lancement impossible',
         body: h('p.selectable', e.message),
