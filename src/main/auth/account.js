@@ -3,7 +3,9 @@ import { safeStorage } from 'electron';
 import { log } from '../util/log.js';
 import { exchangeCode, interactiveLogin, minecraftLogin, refreshToken } from './microsoft.js';
 
-const REFRESH_MARGIN_MS = 10 * 60 * 1000;
+// Les jetons Minecraft durent 24 h : on les renouvelle tôt pour qu'une reconnexion en cours de
+// partie (redémarrage du serveur, déconnexion) ne tombe pas sur un jeton expiré.
+const REFRESH_MARGIN_MS = 12 * 60 * 60 * 1000;
 
 /**
  * Gère le compte connecté : stockage chiffré (trousseau du système via safeStorage),
@@ -68,29 +70,39 @@ export class AccountManager {
   async getLaunchCredentials() {
     if (!this.data) throw new Error('Aucun compte connecté.');
     if (Date.now() > this.data.mc.expiresAt - REFRESH_MARGIN_MS) await this.refresh();
+    if (!this.data) throw sessionExpiredError();
     const { profile, mc, xuid } = this.data;
     return { uuid: profile.id, name: profile.name, accessToken: mc.accessToken, xuid };
   }
 
-  async refresh() {
+  /** Un seul renouvellement à la fois (démarrage du launcher, clic sur Jouer…). */
+  refresh() {
+    this.refreshing ??= this.doRefresh().finally(() => {
+      this.refreshing = null;
+    });
+    return this.refreshing;
+  }
+
+  async doRefresh() {
+    const current = this.data;
     const clientId = this.getClientId();
     let ms;
     try {
-      ms = await refreshToken(clientId, this.data.msRefreshToken);
+      ms = await refreshToken(clientId, current.msRefreshToken);
     } catch (e) {
       if (e.status === 400 || e.status === 401) {
         log.warn('Jeton Microsoft expiré, reconnexion nécessaire');
-        await this.logout();
-        const err = new Error('Ta session a expiré, reconnecte-toi.');
-        err.sessionExpired = true;
-        throw err;
+        if (this.data === current) await this.logout();
+        throw sessionExpiredError();
       }
       throw e;
     }
     const mc = await minecraftLogin(clientId, ms.access_token);
+    // Déconnexion ou changement de compte pendant le renouvellement : on n'écrase rien.
+    if (this.data !== current) throw sessionExpiredError();
     this.data = {
-      ...this.data,
-      msRefreshToken: ms.refresh_token || this.data.msRefreshToken,
+      ...current,
+      msRefreshToken: ms.refresh_token || current.msRefreshToken,
       mc: { accessToken: mc.accessToken, expiresAt: mc.expiresAt },
       xuid: mc.xuid,
       profile: mc.profile,
@@ -98,4 +110,10 @@ export class AccountManager {
     await this.save();
     return this.summary();
   }
+}
+
+function sessionExpiredError() {
+  const err = new Error('Ta session a expiré, reconnecte-toi.');
+  err.sessionExpired = true;
+  return err;
 }

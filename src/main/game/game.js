@@ -187,12 +187,14 @@ export class GameManager extends EventEmitter {
 
   /**
    * Prépare puis lance le jeu avec connexion directe au serveur.
-   * @param {{ uuid: string, name: string, accessToken: string, xuid?: string }} account
+   * @param {() => Promise<{ uuid: string, name: string, accessToken: string, xuid?: string }>} getCredentials
+   *   appelé juste avant le lancement, pour ne pas partir avec un jeton vieilli pendant l'installation
    */
-  async play(account) {
+  async play(getCredentials) {
     // L'état reste « en préparation » jusqu'au démarrage effectif du processus Java.
     const child = await this.exclusive(async (signal) => {
       const { versionId, javaPath } = await this.install({ repair: false, signal });
+      const account = await getCredentials();
       const { child, startedAt } = await this.spawnGame({ account, versionId, javaPath });
       this.attach(child, startedAt);
       return child;

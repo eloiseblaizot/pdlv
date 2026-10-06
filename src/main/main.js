@@ -247,9 +247,10 @@ const api = {
   },
 
   'game:play': async () => {
-    const creds = await accounts.getLaunchCredentials();
+    // Vérifie la session avant une éventuelle longue installation, puis de nouveau au lancement.
+    await accounts.getLaunchCredentials();
     send('account', accounts.summary());
-    return game.play(creds);
+    return game.play(() => accounts.getLaunchCredentials());
   },
   'game:repair': async () => {
     await game.prepare({ repair: true });

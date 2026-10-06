@@ -155,10 +155,14 @@ function renderPlayButton() {
   }
 }
 
+let playRequested = false;
+
 async function onPlay() {
   const state = store.game.state;
   if (state === 'preparing') return call('game:cancel');
-  if (state !== 'idle') return;
+  // Le renouvellement de session précède l'installation : on ignore les doubles clics.
+  if (state !== 'idle' || playRequested) return;
+  playRequested = true;
   progressState.label = 'Préparation…';
   progressState.ratio = null;
   progressState.detail = '';
@@ -177,6 +181,7 @@ async function onPlay() {
       });
     }
   } finally {
+    playRequested = false;
     refreshModpack();
   }
 }
