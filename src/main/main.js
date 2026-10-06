@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -158,7 +159,10 @@ async function refreshStatus() {
 async function modpackInfo() {
   let offline = false;
   try {
-    lastManifest = await fetchManifest({ manifestUrl: config.modpack.manifestUrl, cacheDir: dirs.cache });
+    const r = await fetchManifest({ manifestUrl: config.modpack.manifestUrl, cacheDir: dirs.cache });
+    lastManifest = r.manifest;
+    offline = r.offline;
+    if (r.offline) log.warn('Manifest injoignable, copie locale utilisée :', r.error);
   } catch (e) {
     log.warn('Manifest indisponible :', e.message);
     offline = true;
@@ -317,7 +321,7 @@ const api = {
     return settings.set({ javaPath: r.filePaths[0] });
   },
 
-  'open:folder': (which) => {
+  'open:folder': async (which) => {
     const map = {
       game: dirs.game,
       mods: path.join(dirs.game, 'mods'),
@@ -328,7 +332,10 @@ const api = {
       launcherLogs: dirs.logs,
     };
     if (!map[which]) throw new Error('Dossier inconnu.');
-    return shell.openPath(map[which]);
+    // Les dossiers (captures, crashs…) n'existent qu'après la première partie.
+    await fs.mkdir(map[which], { recursive: true });
+    const err = await shell.openPath(map[which]);
+    if (err) throw new Error(err);
   },
   'open:crashReport': async (file) => {
     // Seuls les rapports de crash du jeu peuvent être ouverts depuis l'interface.

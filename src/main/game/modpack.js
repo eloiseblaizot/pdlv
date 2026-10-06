@@ -6,14 +6,28 @@ import { downloadAll, fetchJson, sha1File } from '../net/download.js';
 const STATE_FILE = '.pdlv-modpack.json';
 const DISABLED_DIR = 'mods_desactives';
 
-/** Récupère le manifest distant ; en cas d'échec, utilise la dernière copie connue. */
+/**
+ * Récupère le manifest distant ; en cas d'échec, utilise la dernière copie connue
+ * et le signale (offline: true) pour que l'interface puisse l'indiquer.
+ */
 export async function fetchManifest({ manifestUrl, cacheDir }) {
-  const manifest = await fetchJson(manifestUrl, {
-    cacheFile: path.join(cacheDir, 'modpack-manifest.json'),
-    noCache: true,
-  });
-  validateManifest(manifest);
-  return manifest;
+  const cacheFile = path.join(cacheDir, 'modpack-manifest.json');
+  try {
+    const manifest = await fetchJson(manifestUrl, { noCache: true });
+    validateManifest(manifest);
+    await fs.mkdir(cacheDir, { recursive: true });
+    await fs.writeFile(cacheFile, JSON.stringify(manifest));
+    return { manifest, offline: false };
+  } catch (e) {
+    let cached;
+    try {
+      cached = JSON.parse(await fs.readFile(cacheFile, 'utf8'));
+    } catch {
+      throw e;
+    }
+    validateManifest(cached);
+    return { manifest: cached, offline: true, error: e.message };
+  }
 }
 
 function validateManifest(m) {

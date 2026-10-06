@@ -1,4 +1,4 @@
-import { call, store } from '../api.js';
+import { call, openFolder, store } from '../api.js';
 import { refreshModpack, showConsole } from '../app.js';
 import { h, icon, modal, toast } from '../ui.js';
 
@@ -101,7 +101,7 @@ export function renderSettings(root) {
   });
 
   // --- Dossiers & dépannage ----------------------------------------------------
-  const folder = (which, label) => h('button.btn.secondary.small', { onclick: () => call('open:folder', which) }, icon('folder'), label);
+  const folder = (which, label) => h('button.btn.secondary.small', { onclick: () => openFolder(which) }, icon('folder'), label);
   grid.append(
     h(
       'div.card',
@@ -155,7 +155,7 @@ export function renderSettings(root) {
           'Réparer l’installation',
         ),
         h('button.btn.ghost', { onclick: showConsole }, icon('terminal'), 'Journal du jeu'),
-        h('button.btn.ghost', { onclick: () => call('open:folder', 'launcherLogs') }, 'Logs du launcher'),
+        h('button.btn.ghost', { onclick: () => openFolder('launcherLogs') }, 'Logs du launcher'),
       ),
       h('p.muted.small', `Launcher version ${info.version} · ${info.platform}`),
     ),

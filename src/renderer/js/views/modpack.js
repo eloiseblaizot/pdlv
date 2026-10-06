@@ -1,4 +1,4 @@
-import { call, store } from '../api.js';
+import { call, openFolder, store } from '../api.js';
 import { refreshModpack } from '../app.js';
 import { clear, formatBytes, formatDate, h, icon, loading, toast } from '../ui.js';
 
@@ -67,7 +67,7 @@ export function renderModpack(root, { params }) {
           'div.row',
           { style: { marginTop: '16px' } },
           updateBtn,
-          h('button.btn.secondary', { onclick: () => call('open:folder', 'mods') }, icon('folder'), 'Dossier des mods'),
+          h('button.btn.secondary', { onclick: () => openFolder('mods') }, icon('folder'), 'Dossier des mods'),
         ),
         m.offline
           ? h('p.muted.small', { style: { marginTop: '10px' } }, 'Hors-ligne : informations issues de la dernière synchronisation.')

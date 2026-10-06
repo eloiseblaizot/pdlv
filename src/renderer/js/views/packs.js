@@ -1,4 +1,4 @@
-import { call, on, store } from '../api.js';
+import { call, on, openFolder, store } from '../api.js';
 import { clear, emptyState, formatBytes, formatDate, h, icon, loading, toast } from '../ui.js';
 
 export function renderPacks(root) {
@@ -11,7 +11,7 @@ export function renderPacks(root) {
         h('h2', 'Packs de textures'),
         h('p', 'Les packs de ressources du serveur. Ils sont activés automatiquement au prochain lancement du jeu.'),
       ),
-      h('button.btn.secondary', { onclick: () => call('open:folder', 'resourcepacks') }, icon('folder'), 'Ouvrir le dossier'),
+      h('button.btn.secondary', { onclick: () => openFolder('resourcepacks') }, icon('folder'), 'Ouvrir le dossier'),
     ),
     list,
   );

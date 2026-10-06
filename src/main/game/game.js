@@ -122,7 +122,7 @@ export class GameManager extends EventEmitter {
     const manifestUrl = config.modpack.manifestUrl;
     let manifest;
     try {
-      manifest = await fetchManifest({ manifestUrl, cacheDir: this.dirs.cache });
+      ({ manifest } = await fetchManifest({ manifestUrl, cacheDir: this.dirs.cache }));
     } catch (e) {
       throw new Error(`Impossible de récupérer la liste des mods du serveur (${e.message}). Vérifie ta connexion internet.`);
     }

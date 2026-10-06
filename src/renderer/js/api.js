@@ -1,3 +1,5 @@
+import { toast } from './ui.js';
+
 /** Appels au processus principal (voir src/main/main.js, objet `api`). */
 export async function call(method, ...args) {
   const res = await window.pdlv.invoke(method, ...args);
@@ -11,6 +13,9 @@ export async function call(method, ...args) {
 }
 
 export const on = (type, cb) => window.pdlv.on(type, cb);
+
+/** Ouvre un dossier du jeu dans l'explorateur, en signalant un éventuel échec. */
+export const openFolder = (which) => call('open:folder', which).catch((e) => toast(e.message, 'error'));
 
 /** État partagé entre les vues. */
 export const store = {

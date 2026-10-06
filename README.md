@@ -87,6 +87,7 @@ Options du manifest, modifiables à la main après génération :
 - `files` : fichiers de configuration à distribuer, sous la forme `{ "path": "config/x.toml", "url": "files/config/x.toml", "sha1": "…", "size": 123, "overwrite": false }`.
 - `launcher.announcement` : message affiché sur l'accueil.
 - `launcher.suggestionsWebhook` : URL d'un webhook Discord qui reçoit les suggestions de mods. Il est modifiable sans republier le launcher.
+  > ⚠️ Cette URL est lisible par n'importe qui : elle est dans le manifest public et dans le launcher. Quelqu'un qui la récupère peut poster dans le salon. Utilise un salon dédié aux suggestions et régénère le webhook s'il est détourné : le changer dans le manifest suffit, sans republier le launcher. Pour une protection complète, il faudrait un petit relais sur ton serveur qui garde le webhook secret et limite les envois.
 
 > Un modpack 1.0.0 prêt à publier a déjà été généré dans `modpack-dist/` à partir des 18 mods actuels.
 
