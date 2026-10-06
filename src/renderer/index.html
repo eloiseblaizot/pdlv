@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: https:; frame-src https: http:; connect-src 'none'; object-src 'none'; base-uri 'none'"
+    />
+    <title>Pays de la Valière</title>
+    <link rel="stylesheet" href="css/app.css" />
+  </head>
+  <body>
+    <!-- Écran de connexion -->
+    <section id="login" hidden>
+      <div class="brand-side drag">
+        <h1>Bienvenue au<br />Pays de la Valière</h1>
+        <p>Le launcher officiel du serveur : modpack à jour, cartes en direct et connexion en un clic.</p>
+      </div>
+      <div class="form-side drag">
+        <img class="logo" src="assets/logo-conseil-regional.png" alt="Pays de la Valière — Conseil Régional" />
+        <div class="card-login no-drag">
+          <button id="login-btn" class="btn microsoft">
+            <span class="ms-logo"
+              ><i style="background: #f25022"></i><i style="background: #7fba00"></i><i style="background: #00a4ef"></i
+              ><i style="background: #ffb900"></i
+            ></span>
+            Se connecter avec Microsoft
+          </button>
+          <p>
+            Utilise le compte Microsoft (ou Xbox) qui possède Minecraft&nbsp;: Java Edition. Les anciens comptes Mojang ont été migrés vers
+            Microsoft.
+          </p>
+          <div id="login-error" class="login-error" hidden></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Application -->
+    <section id="app" hidden>
+      <aside id="sidebar" class="drag">
+        <div class="brand">
+          <img src="assets/icon.png" alt="" />
+          <div>
+            <div class="name">Pays de la Valière</div>
+            <div class="sub">Conseil Régional</div>
+          </div>
+        </div>
+        <nav id="nav"></nav>
+        <div class="account no-drag">
+          <img id="account-head" alt="" />
+          <div class="who">
+            <b id="account-name"></b>
+            <span>Compte Microsoft</span>
+          </div>
+          <button id="logout-btn" title="Se déconnecter"></button>
+        </div>
+      </aside>
+      <main id="main">
+        <div id="titlebar" class="drag"><span id="update-zone" class="update-banner no-drag"></span></div>
+        <div id="view"></div>
+        <footer id="playbar">
+          <div class="server-mini">
+            <img id="mini-favicon" src="assets/icon.png" alt="" />
+            <div>
+              <b id="mini-name">Pays de la Valière</b>
+              <span id="mini-status">Vérification…</span>
+            </div>
+          </div>
+          <div class="progress-zone" id="progress-zone"></div>
+          <button id="play-btn" class="play">JOUER</button>
+        </footer>
+      </main>
+    </section>
+
+    <div id="toasts"></div>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
