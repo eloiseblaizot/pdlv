@@ -150,12 +150,14 @@ Les launchers déjà installés se mettent à jour d'eux-mêmes.
 
 **Signature** :
 
-- **macOS** : la CI signe l'application avec le certificat *Developer ID Application* d'ALMYRIA (`3C4CFGT7V6`) et la fait notariser par Apple. Gatekeeper l'ouvre sans avertissement et la mise à jour automatique est active (`updates.macAppSigned: true`). Les secrets GitHub utilisés sont :
-  - `CSC_LINK` : le `.p12` encodé en base64 ;
+- **macOS** : si les secrets sont renseignés, la CI signe l'application avec un certificat **Developer ID Application** et la fait notariser par Apple. Gatekeeper l'ouvre alors sans avertissement. Les secrets GitHub utilisés sont :
+  - `CSC_LINK` : le `.p12` encodé en base64, **avec sa clé privée** ;
   - `CSC_KEY_PASSWORD` : son mot de passe ;
   - `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` et `APPLE_TEAM_ID` : pour la notarisation.
 
-  Les autorisations du runtime durci sont dans `build/entitlements.mac.plist`. Après chaque build, l'étape « Vérifier la signature macOS » publie le résultat de Gatekeeper dans les annotations du run.
+  Seul le titulaire (« Account Holder ») du compte Apple Developer peut créer ce type de certificat. Sans secrets, l'app est construite non signée : il faut l'autoriser une première fois dans *Réglages Système → Confidentialité et sécurité → Ouvrir quand même*.
+
+  Le launcher détecte lui-même sa signature au démarrage. Signé Developer ID, il installe ses mises à jour automatiquement ; sinon, il affiche simplement « Nouvelle version disponible » avec un lien de téléchargement, car macOS refuse les mises à jour automatiques d'une app non signée. Les autorisations du runtime durci sont dans `build/entitlements.mac.plist`. Après chaque build, l'étape « Vérifier la signature macOS » publie le verdict de Gatekeeper dans les annotations du run.
 - **Windows** : sans certificat, SmartScreen affiche un avertissement au premier lancement (« Informations complémentaires » → « Exécuter quand même »). Le certificat Apple ne sert pas sous Windows. Pour signer, ajoute un certificat Windows dans les secrets `WIN_CSC_LINK` et `WIN_CSC_KEY_PASSWORD`.
 - En cas d'échec, l'erreur d'electron-builder est recopiée dans les annotations du run, lisibles sans être connecté à GitHub.
 

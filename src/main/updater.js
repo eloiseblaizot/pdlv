@@ -1,3 +1,5 @@
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
 import { app } from 'electron';
 import electronUpdater from 'electron-updater';
 import { log } from './util/log.js';
@@ -5,15 +7,23 @@ import { log } from './util/log.js';
 const { autoUpdater } = electronUpdater;
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
+/** Vrai si l'application macOS est signée avec un certificat Developer ID (lu sur le bundle lui-même). */
+function isDeveloperIdSigned() {
+  const bundle = path.resolve(process.execPath, '..', '..', '..');
+  const r = spawnSync('/usr/bin/codesign', ['-dv', '--verbose=2', bundle], { encoding: 'utf8' });
+  return /^Authority=Developer ID Application:/m.test(r.stderr ?? '');
+}
+
 /**
  * Mise à jour automatique du launcher depuis le dossier configuré dans package.json (build.publish).
- * Sur macOS, l'installation automatique exige une application signée : sans signature,
+ * Sur macOS, l'installation automatique exige une application signée Developer ID : sans elle,
  * on se contente de prévenir le joueur qu'une nouvelle version est disponible.
  */
-export function initUpdater(send, { macAppSigned = false } = {}) {
+export function initUpdater(send) {
   if (!app.isPackaged) return { install: () => {} };
 
-  const canAutoInstall = process.platform !== 'darwin' || macAppSigned;
+  const canAutoInstall = process.platform !== 'darwin' || isDeveloperIdSigned();
+  log.info(`[maj] installation automatique : ${canAutoInstall ? 'oui' : 'non (app macOS non signée)'}`);
   autoUpdater.logger = null;
   autoUpdater.autoDownload = canAutoInstall;
   autoUpdater.autoInstallOnAppQuit = canAutoInstall;

@@ -381,7 +381,7 @@ app.whenReady().then(async () => {
   allowMapFraming();
   await accounts.load();
   createWindow();
-  updater = initUpdater(send, { macAppSigned: !!config.updates?.macAppSigned });
+  updater = initUpdater(send);
 
   refreshStatus();
   setInterval(() => {

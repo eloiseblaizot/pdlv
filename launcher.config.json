@@ -26,7 +26,6 @@
     "discordWebhook": ""
   },
   "updates": {
-    "downloadUrl": "https://ftp.paysdelavaliere.fr/Launcher/",
-    "macAppSigned": true
+    "downloadUrl": "https://ftp.paysdelavaliere.fr/Launcher/"
   }
 }
