@@ -1,5 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeTheme, session, shell } from 'electron';
 import { AccountManager } from './auth/account.js';
 import { getDirs, loadConfig, Settings } from './config.js';
@@ -14,6 +15,7 @@ import { initUpdater } from './updater.js';
 import { initLog, log } from './util/log.js';
 
 const ROOT = path.join(import.meta.dirname, '..');
+const INDEX_HTML = path.join(ROOT, 'renderer', 'index.html');
 const STATUS_INTERVAL_MS = 30 * 1000;
 
 // Une seule instance : un second lancement remet simplement la fenêtre existante au premier plan.
@@ -59,16 +61,15 @@ function createWindow() {
       sandbox: true,
     },
   });
-  win.loadFile(path.join(ROOT, 'renderer', 'index.html'));
+  win.loadFile(INDEX_HTML);
   win.once('ready-to-show', () => win.show());
   win.on('closed', () => (win = null));
 
-  // Le launcher ne navigue jamais : les liens s'ouvrent dans le navigateur du système.
+  // Le launcher ne navigue jamais (ni vers un site, ni vers un fichier glissé sur la fenêtre) :
+  // les liens web s'ouvrent dans le navigateur du système.
   win.webContents.on('will-navigate', (e, url) => {
-    if (!url.startsWith('file://')) {
-      e.preventDefault();
-      openExternal(url);
-    }
+    e.preventDefault();
+    openExternal(url);
   });
   win.webContents.setWindowOpenHandler(({ url }) => {
     openExternal(url);
@@ -78,6 +79,18 @@ function createWindow() {
 
 function openExternal(url) {
   if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+}
+
+/** Vrai si l'appel IPC provient de la page du launcher dans la fenêtre principale. */
+function isLauncherFrame(event) {
+  const url = event.senderFrame?.url;
+  if (!win || event.sender !== win.webContents || !url?.startsWith('file:')) return false;
+  const norm = (p) => (process.platform === 'win32' ? path.resolve(p).toLowerCase() : path.resolve(p));
+  try {
+    return norm(fileURLToPath(url.split(/[?#]/)[0])) === norm(INDEX_HTML);
+  } catch {
+    return false;
+  }
 }
 
 /** Autorise l'intégration des cartes (BlueMap, plan des transports) dans le launcher. */
@@ -109,11 +122,24 @@ function openDriveWindow() {
     autoHideMenuBar: true,
     webPreferences: { partition: 'persist:drive', sandbox: true, contextIsolation: true, nodeIntegration: false },
   });
+  // La fenêtre n'a pas de barre d'adresse : elle reste cantonnée au Drive du serveur.
+  const driveOrigin = new URL(config.images.uploadUrl).origin;
+  const isDrive = (url) => {
+    try {
+      return new URL(url).origin === driveOrigin;
+    } catch {
+      return false;
+    }
+  };
   driveWin.webContents.setWindowOpenHandler(({ url }) => {
-    const drive = new URL(config.images.uploadUrl).origin;
-    if (url.startsWith(drive)) return { action: 'allow' };
+    if (isDrive(url)) return { action: 'allow' };
     openExternal(url);
     return { action: 'deny' };
+  });
+  driveWin.webContents.on('will-navigate', (e, url) => {
+    if (isDrive(url)) return;
+    e.preventDefault();
+    openExternal(url);
   });
   driveWin.loadURL(config.images.uploadUrl);
   driveWin.on('closed', () => (driveWin = null));
@@ -257,7 +283,11 @@ const api = {
   'mods:suggest': (s) => sendSuggestion(suggestionsWebhook(), { ...s, player: accounts.summary()?.name ?? 'Inconnu' }),
 
   'settings:get': () => settings.get(),
-  'settings:set': (patch) => settings.set(patch),
+  'settings:set': (patch) => {
+    // Le chemin de Java ne peut être choisi que via la boîte de dialogue (qui le vérifie).
+    if (patch?.javaPath) throw new Error('Utilise le bouton « Choisir… » pour sélectionner Java.');
+    return settings.set(patch ?? {});
+  },
   'settings:pickJava': async () => {
     const r = await dialog.showOpenDialog(win, {
       title: 'Choisir l’exécutable Java 17+',
@@ -283,11 +313,13 @@ const api = {
     if (!map[which]) throw new Error('Dossier inconnu.');
     return shell.openPath(map[which]);
   },
-  'open:file': (file) => {
-    // Seuls les fichiers du dossier de jeu peuvent être ouverts (rapports de crash…).
+  'open:crashReport': async (file) => {
+    // Seuls les rapports de crash du jeu peuvent être ouverts depuis l'interface.
+    const crashDir = path.join(dirs.game, 'crash-reports');
     const resolved = path.resolve(String(file));
-    if (!resolved.startsWith(dirs.game + path.sep)) throw new Error('Fichier non autorisé.');
-    return shell.openPath(resolved);
+    if (path.dirname(resolved) !== crashDir || !resolved.endsWith('.txt')) throw new Error('Fichier non autorisé.');
+    const err = await shell.openPath(resolved);
+    if (err) throw new Error(err);
   },
   'open:url': (url) => openExternal(String(url)),
   'clipboard:write': (text) => clipboard.writeText(String(text)),
@@ -295,7 +327,7 @@ const api = {
 };
 
 ipcMain.handle('pdlv', async (event, method, ...args) => {
-  if (event.senderFrame?.url && !event.senderFrame.url.startsWith('file://')) return { ok: false, error: 'Origine refusée' };
+  if (!isLauncherFrame(event)) return { ok: false, error: 'Origine refusée' };
   const fn = api[method];
   if (!fn) return { ok: false, error: `Méthode inconnue : ${method}` };
   try {

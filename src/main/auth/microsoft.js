@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, shell } from 'electron';
 import { USER_AGENT } from '../net/download.js';
 
 // Flux OAuth « bureau » de Microsoft : la page de connexion redirige vers cette URL avec ?code=...
@@ -68,7 +68,10 @@ export function interactiveLogin(parent, clientId) {
     win.webContents.on('did-navigate', (_e, u) => handle(u));
     win.webContents.on('did-redirect-navigation', (_e, u) => handle(u));
     // Liens externes (création de compte, aide…) : navigateur du système.
-    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    win.webContents.setWindowOpenHandler(({ url }) => {
+      if (/^https:\/\//.test(url)) shell.openExternal(url);
+      return { action: 'deny' };
+    });
     win.on('closed', () => {
       if (!settled) {
         settled = true;

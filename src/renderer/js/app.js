@@ -224,7 +224,7 @@ function onGameState(s) {
     const actions = [{ label: 'Fermer', value: null }];
     if (s.crashReport) actions.unshift({ label: 'Ouvrir le rapport de crash', value: 'report' });
     modal({ title: 'Le jeu a planté', body, actions }).then((v) => {
-      if (v === 'report') call('open:file', s.crashReport);
+      if (v === 'report') call('open:crashReport', s.crashReport);
     });
   }
 }
@@ -263,6 +263,8 @@ function renderUpdate(u) {
 // --- Démarrage -----------------------------------------------------------------------------------
 
 async function boot() {
+  // Un fichier glissé sur la fenêtre ne doit pas remplacer l'interface.
+  for (const type of ['dragover', 'drop']) document.addEventListener(type, (e) => e.preventDefault());
   buildNav();
   $('login-btn').addEventListener('click', login);
   $('logout-btn').append(icon('logout'));
