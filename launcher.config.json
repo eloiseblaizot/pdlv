@@ -1,0 +1,32 @@
+{
+  "serverName": "Pays de la Valière",
+  "server": {
+    "host": "mc.paysdelavaliere.fr",
+    "port": 25565,
+    "queryPort": null
+  },
+  "modpack": {
+    "manifestUrl": "https://ftp.paysdelavaliere.fr/Modspack/manifest.json"
+  },
+  "resourcePacks": {
+    "listingUrl": "https://ftp.paysdelavaliere.fr/Ressourcespack/"
+  },
+  "images": {
+    "listingUrl": "https://ftp.paysdelavaliere.fr/Images/",
+    "uploadUrl": "https://drive.paysdelavaliere.fr/"
+  },
+  "maps": {
+    "bluemap": "https://mc.paysdelavaliere.fr/",
+    "transport": "http://mc.paysdelavaliere.fr:8888/"
+  },
+  "auth": {
+    "microsoftClientId": "00000000402b5328"
+  },
+  "suggestions": {
+    "discordWebhook": ""
+  },
+  "updates": {
+    "downloadUrl": "https://ftp.paysdelavaliere.fr/Launcher/",
+    "macAppSigned": false
+  }
+}

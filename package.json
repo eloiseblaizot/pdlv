@@ -1,0 +1,119 @@
+{
+  "name": "pdlv-launcher",
+  "productName": "Pays de la Valiere",
+  "version": "1.0.0",
+  "description": "Launcher officiel du serveur Minecraft Pays de la Valière",
+  "author": {
+    "name": "Pays de la Valière",
+    "email": "noreply@paysdelavaliere.fr"
+  },
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "modpack": "node tools/build-modpack.mjs",
+    "dist": "electron-builder --publish never",
+    "dist:mac": "electron-builder --mac --publish never",
+    "dist:win": "electron-builder --win --publish never",
+    "dist:linux": "electron-builder --linux --publish never"
+  },
+  "dependencies": {
+    "@xmcl/core": "2.15.1",
+    "adm-zip": "^0.6.1",
+    "electron-updater": "^6.8.9"
+  },
+  "devDependencies": {
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "fr.paysdelavaliere.launcher",
+    "productName": "Pays de la Valiere",
+    "artifactName": "PaysDeLaValiere-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "launcher.config.json",
+      "package.json"
+    ],
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://ftp.paysdelavaliere.fr/Launcher/"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.games",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "extendInfo": {
+        "CFBundleDisplayName": "Pays de la Valière"
+      }
+    },
+    "dmg": {
+      "title": "Pays de la Valière"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Pays de la Valière",
+      "uninstallDisplayName": "Pays de la Valière"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Game",
+      "executableName": "pdlv-launcher",
+      "synopsis": "Launcher du serveur Minecraft Pays de la Valière",
+      "desktop": {
+        "entry": {
+          "Name": "Pays de la Valière",
+          "Comment": "Launcher du serveur Minecraft Pays de la Valière",
+          "StartupWMClass": "Pays de la Valiere"
+        }
+      }
+    }
+  }
+}
