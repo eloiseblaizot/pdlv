@@ -48,6 +48,14 @@ Les données des joueurs sont séparées de leur `.minecraft` :
 | macOS | `~/Library/Application Support/paysdelavaliere` |
 | Linux | `~/.paysdelavaliere` |
 
+## Installer le launcher (joueurs)
+
+Les fichiers à télécharger sont publiés dans `https://ftp.paysdelavaliere.fr/Launcher/`.
+
+- **Windows** : lance `PaysDeLaValiere-x.y.z-win-x64.exe`. Si Windows affiche « Windows a protégé votre ordinateur », clique sur **Informations complémentaires** puis **Exécuter quand même**.
+- **macOS** : ouvre le `.dmg` correspondant à ton Mac (`arm64` pour Apple Silicon M1/M2/M3…, `x64` pour Intel) et glisse l'app dans *Applications*. Au premier lancement, macOS refuse de l'ouvrir. Va dans *Réglages Système → Confidentialité et sécurité*, puis clique sur **Ouvrir quand même** en bas de la page et confirme. C'est à faire une seule fois.
+- **Linux** : `.deb` pour Debian/Ubuntu, ou `.AppImage` à rendre exécutable (`chmod +x`) puis à lancer.
+
 ## Développement
 
 Prérequis : Node.js 20 ou plus récent. Java n'est pas nécessaire, le launcher l'installe lui-même.
@@ -150,14 +158,15 @@ Les launchers déjà installés se mettent à jour d'eux-mêmes.
 
 **Signature** :
 
-- **macOS** : si les secrets sont renseignés, la CI signe l'application avec un certificat **Developer ID Application** et la fait notariser par Apple. Gatekeeper l'ouvre alors sans avertissement. Les secrets GitHub utilisés sont :
-  - `CSC_LINK` : le `.p12` encodé en base64, **avec sa clé privée** ;
-  - `CSC_KEY_PASSWORD` : son mot de passe ;
-  - `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` et `APPLE_TEAM_ID` : pour la notarisation.
+- **macOS** : l'app reçoit une **signature ad hoc** (`build.mac.identity: "-"` dans `package.json`). Sans elle, macOS déclarerait l'app « endommagée » sans possibilité de l'ouvrir. Au premier lancement, le joueur doit l'autoriser une fois (voir « Installer le launcher » ci-dessous). Le launcher détecte qu'il n'est pas signé Developer ID : à chaque nouvelle version, il affiche « Nouvelle version disponible » avec un lien de téléchargement, car macOS refuse les mises à jour automatiques d'une app non signée.
 
-  Seul le titulaire (« Account Holder ») du compte Apple Developer peut créer ce type de certificat. Sans secrets, l'app est construite non signée : il faut l'autoriser une première fois dans *Réglages Système → Confidentialité et sécurité → Ouvrir quand même*.
+  Pour passer plus tard à une signature Apple complète :
+  1. Le titulaire du compte Apple Developer crée un certificat **Developer ID Application**.
+  2. Exporte-le en `.p12` **avec sa clé privée** dans le secret `CSC_LINK`, et son mot de passe dans `CSC_KEY_PASSWORD`.
+  3. Les secrets `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` et `APPLE_TEAM_ID` servent à la notarisation.
+  4. Retire `identity` et `hardenedRuntime` de `build.mac` dans `package.json`.
 
-  Le launcher détecte lui-même sa signature au démarrage. Signé Developer ID, il installe ses mises à jour automatiquement ; sinon, il affiche simplement « Nouvelle version disponible » avec un lien de téléchargement, car macOS refuse les mises à jour automatiques d'une app non signée. Les autorisations du runtime durci sont dans `build/entitlements.mac.plist`. Après chaque build, l'étape « Vérifier la signature macOS » publie le verdict de Gatekeeper dans les annotations du run.
+  La CI signe et notarise alors l'app (autorisations dans `build/entitlements.mac.plist`), et le launcher se met à jour seul.
 - **Windows** : sans certificat, SmartScreen affiche un avertissement au premier lancement (« Informations complémentaires » → « Exécuter quand même »). Le certificat Apple ne sert pas sous Windows. Pour signer, ajoute un certificat Windows dans les secrets `WIN_CSC_LINK` et `WIN_CSC_KEY_PASSWORD`.
 - En cas d'échec, l'erreur d'electron-builder est recopiée dans les annotations du run, lisibles sans être connecté à GitHub.
 

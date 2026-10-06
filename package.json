@@ -49,6 +49,8 @@
     ],
     "mac": {
       "category": "public.app-category.games",
+      "identity": "-",
+      "hardenedRuntime": false,
       "target": [
         {
           "target": "dmg",

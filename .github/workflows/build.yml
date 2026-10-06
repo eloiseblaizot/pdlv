@@ -41,7 +41,10 @@ jobs:
         run: |
           # Le certificat Apple ne sert qu'au build macOS (sinon electron-builder l'utiliserait aussi
           # pour signer l'installateur Windows). Windows utilisera WIN_CSC_LINK s'il est fourni un jour.
-          if [ "$RUNNER_OS" = "macOS" ]; then
+          # Tant que package.json demande une signature ad hoc (build.mac.identity = "-"), le certificat
+          # et la notarisation sont ignorés, même si les secrets existent.
+          mac_identity=$(node -p "require('./package.json').build.mac.identity ?? ''")
+          if [ "$RUNNER_OS" = "macOS" ] && [ "$mac_identity" != "-" ]; then
             export CSC_LINK="$MAC_CSC_LINK" CSC_KEY_PASSWORD="$MAC_CSC_KEY_PASSWORD"
           else
             unset APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
@@ -80,9 +83,10 @@ jobs:
         shell: bash
         run: |
           app="$(ls -d dist/mac-arm64/*.app | head -1)"
-          sig=$(codesign -dv --verbose=2 "$app" 2>&1 | grep -E '^(Authority=Developer ID Application|TeamIdentifier|Runtime Version)' | tr '\n' ' ' || true)
+          sig=$(codesign -dv --verbose=2 "$app" 2>&1 | grep -E '^(Signature=|Authority=Developer ID Application|TeamIdentifier|Runtime Version)' | tr '\n' ' ' || true)
           gatekeeper=$(spctl --assess --type execute -vv "$app" 2>&1 | tr '\n' ' ' || true)
-          echo "::notice title=Signature macOS::${sig:-application non signée} | Gatekeeper : ${gatekeeper}"
+          valid=$(codesign --verify --deep --strict "$app" 2>&1 && echo "signature valide" || true)
+          echo "::notice title=Signature macOS::${sig:-aucune signature} | ${valid:-signature INVALIDE} | Gatekeeper : ${gatekeeper}"
 
       - uses: actions/upload-artifact@v7
         with:
