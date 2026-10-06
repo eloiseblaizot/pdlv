@@ -27,6 +27,6 @@
   },
   "updates": {
     "downloadUrl": "https://ftp.paysdelavaliere.fr/Launcher/",
-    "macAppSigned": false
+    "macAppSigned": true
   }
 }

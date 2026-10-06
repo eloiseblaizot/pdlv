@@ -148,13 +148,16 @@ Le plus simple est la CI GitHub (`.github/workflows/build.yml`) : elle construit
 
 Les launchers déjà installés se mettent à jour d'eux-mêmes.
 
-**Signature** : sans certificat, le launcher fonctionne, avec quelques limites.
+**Signature** :
 
-- **Windows** : SmartScreen affiche un avertissement au premier lancement (« Informations complémentaires » → « Exécuter quand même »).
-- **macOS** :
-  - il faut autoriser l'application une première fois dans *Réglages Système → Confidentialité et sécurité → Ouvrir quand même* ;
-  - la mise à jour automatique est **désactivée** : macOS l'interdit aux apps non signées, le launcher affiche alors seulement « Nouvelle version disponible » ;
-  - avec un compte Apple Developer, renseigne les secrets `CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` et `APPLE_TEAM_ID` dans GitHub, puis passe `updates.macAppSigned` à `true` dans `launcher.config.json`.
+- **macOS** : la CI signe l'application avec le certificat *Developer ID Application* d'ALMYRIA (`3C4CFGT7V6`) et la fait notariser par Apple. Gatekeeper l'ouvre sans avertissement et la mise à jour automatique est active (`updates.macAppSigned: true`). Les secrets GitHub utilisés sont :
+  - `CSC_LINK` : le `.p12` encodé en base64 ;
+  - `CSC_KEY_PASSWORD` : son mot de passe ;
+  - `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` et `APPLE_TEAM_ID` : pour la notarisation.
+
+  Les autorisations du runtime durci sont dans `build/entitlements.mac.plist`. Après chaque build, l'étape « Vérifier la signature macOS » publie le résultat de Gatekeeper dans les annotations du run.
+- **Windows** : sans certificat, SmartScreen affiche un avertissement au premier lancement (« Informations complémentaires » → « Exécuter quand même »). Le certificat Apple ne sert pas sous Windows. Pour signer, ajoute un certificat Windows dans les secrets `WIN_CSC_LINK` et `WIN_CSC_KEY_PASSWORD`.
+- En cas d'échec, l'erreur d'electron-builder est recopiée dans les annotations du run, lisibles sans être connecté à GitHub.
 
 > Le nom technique de l'application est `Pays de la Valiere`, sans accent. Electron sur macOS ne retrouve pas ses processus internes si le nom du bundle contient un « è ». Le nom affiché (Dock, raccourcis, fenêtre) reste « Pays de la Valière ».
 
